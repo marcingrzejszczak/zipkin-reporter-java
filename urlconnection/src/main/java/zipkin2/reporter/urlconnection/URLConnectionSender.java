@@ -188,6 +188,12 @@ public final class URLConnectionSender extends Sender {
     return new HttpPostCall(encoder.encode(encodedSpans));
   }
 
+  @Override
+  public Call<Void> sendSpans(byte[] encodedSpans) {
+    if (closeCalled) throw new ClosedSenderException();
+    return new HttpPostCall(encodedSpans);
+  }
+
   /** Sends an empty json message to the configured endpoint. */
   @Override public CheckResult check() {
     try {

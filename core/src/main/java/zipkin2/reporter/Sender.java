@@ -91,6 +91,19 @@ public abstract class Sender extends Component {
    */
   public abstract Call<Void> sendSpans(List<byte[]> encodedSpans);
 
+  /**
+   * Sends encoded spans to a transport such as http or Kafka. For backward
+   * compatibility converts it to a list, but the idea is that you already
+   * converted the spans to the format of your choosing, and the sender
+   * will send the bytes over the wire accordingly.
+   *
+   * @param encodedSpans encoded spans.
+   * @throws IllegalStateException if {@link #close() close} was called.
+   */
+  public Call<Void> sendSpans(byte[] encodedSpans) {
+    return sendSpans(Collections.singletonList(encodedSpans));
+  }
+
   static {
     InternalReporter.instance = new InternalReporter() {
       @Override public AsyncReporter.Builder toBuilder(AsyncReporter<?> asyncReporter) {
