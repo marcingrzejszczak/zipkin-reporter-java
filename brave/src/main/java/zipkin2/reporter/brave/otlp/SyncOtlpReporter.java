@@ -23,6 +23,7 @@ import com.google.protobuf.util.JsonFormat;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.Option;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.TracesData;
 import zipkin2.codec.Encoding;
@@ -70,7 +71,7 @@ public final class SyncOtlpReporter implements Reporter<TracesData>, Closeable {
           .print(tracesData);
         // TODO: https://stackoverflow.com/questions/53080136/protobuf-jsonformater-printer-convert-long-to-string-in-json
         // this is ridiculous...
-        asString = modifyBrokenJson(asString);
+        asString = fixOTLPJsonNotBeingInAccordanceWithProtobufsJsonConvertingMechanisms(asString);
         bytes = asString.getBytes(Charset.defaultCharset());
       }
       else {
@@ -85,18 +86,30 @@ public final class SyncOtlpReporter implements Reporter<TracesData>, Closeable {
     }
   }
 
-  private String modifyBrokenJson(String asString) {
-    // "startTimeUnixNano", "endTimeUnixNano", "timeUnixNano" are wrong
-    DocumentContext documentContext = JsonPath.parse(asString);
+  private String fixOTLPJsonNotBeingInAccordanceWithProtobufsJsonConvertingMechanisms(String asString) {
+    // "startTimeUnixNano", "endTimeUnixNano", "timeUnixNano" are not numbers
+    DocumentContext documentContext = JsonPath.parse(asString, Configuration.builder().options(Option.SUPPRESS_EXCEPTIONS).build());
+    // Protobuf does that
     documentContext.map("$.resourceSpans[*].scopeSpans[*].spans[*].startTimeUnixNano", SyncOtlpReporter::convertToNumber);
     documentContext.map("$.resourceSpans[*].scopeSpans[*].spans[*].endTimeUnixNano", SyncOtlpReporter::convertToNumber);
     documentContext.map("$.resourceSpans[*].scopeSpans[*].spans[*].events[*].timeUnixNano", SyncOtlpReporter::convertToNumber);
+    // Ids must be converted back from base64 - https://github.com/open-telemetry/opentelemetry-proto/blob/main/docs/specification.md#json-protobuf-encoding
+    documentContext.map("$.resourceSpans[*].scopeSpans[*].spans[*].traceId", SyncOtlpReporter::convertBackFromBase64);
+    documentContext.map("$.resourceSpans[*].scopeSpans[*].spans[*].spanId", SyncOtlpReporter::convertBackFromBase64);
+    documentContext.map("$.resourceSpans[*].scopeSpans[*].spans[*].parentSpanId", SyncOtlpReporter::convertBackFromBase64);
     return documentContext.jsonString();
   }
 
   private static Object convertToNumber(Object currentValue, Configuration configuration) {
     if (currentValue instanceof String) {
       return Long.valueOf((String) currentValue);
+    }
+    return currentValue;
+  }
+
+  private static Object convertBackFromBase64(Object currentValue, Configuration configuration) {
+    if (currentValue instanceof String) {
+      return new String(Base64.decode((String) currentValue));
     }
     return currentValue;
   }

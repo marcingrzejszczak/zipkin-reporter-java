@@ -283,6 +283,8 @@ public final class OkHttpSender extends Sender {
     return new HttpCall(client.newCall(request));
   }
 
+  // TODO: Allow sending of just byte[] without a list
+
   /** Sends an empty json message to the configured endpoint. */
   @Override public CheckResult check() {
     try {

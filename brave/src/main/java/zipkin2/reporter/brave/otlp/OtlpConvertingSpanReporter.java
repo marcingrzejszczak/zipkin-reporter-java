@@ -53,11 +53,11 @@ final class OtlpConvertingSpanReporter implements Reporter<MutableSpan> {
     Builder resourceSpansBuilder = ResourceSpans.newBuilder();
     ScopeSpans.Builder scopeSpanBuilder = ScopeSpans.newBuilder();
     Span.Builder spanBuilder = Span.newBuilder()
-        .setTraceId(ByteString.fromHex(span.traceId()))
-      .setSpanId(ByteString.fromHex(span.id()))
+        .setTraceId(ByteString.copyFrom(span.traceId().getBytes()))
+      .setSpanId(ByteString.copyFrom(span.id().getBytes()))
       .setName(span.name());
     if (span.parentId() != null) {
-        spanBuilder.setParentSpanId(ByteString.fromHex(span.parentId()));
+        spanBuilder.setParentSpanId(ByteString.copyFrom(span.parentId().getBytes()));
     }
     long start = span.startTimestamp();
     long finish = span.finishTimestamp();

@@ -99,6 +99,7 @@ public abstract class Sender extends Component {
    *
    * @param encodedSpans encoded spans.
    * @throws IllegalStateException if {@link #close() close} was called.
+   * @since 2.16
    */
   public Call<Void> sendSpans(byte[] encodedSpans) {
     return sendSpans(Collections.singletonList(encodedSpans));
