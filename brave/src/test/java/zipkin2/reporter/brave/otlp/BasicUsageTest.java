@@ -48,13 +48,14 @@ class BasicUsageTest {
   void shouldSendSpansToOtlpEndpoint() throws InterruptedException {
     Span started = braveTracer.nextSpan().name("foo")
       .tag("foo tag", "foo value")
-      .annotate("boom!")
       .kind(Kind.CONSUMER)
       .error(new RuntimeException("BOOOOOM!"))
       .remoteServiceName("remote service")
       .start();
     System.out.println("Trace Id <" + started.context().traceIdString() + ">");
     started.remoteIpAndPort("http://localhost", 123456);
+    Thread.sleep(1000);
+    started.annotate("boom!");
     Thread.sleep(1000);
     started.finish();
     Thread.sleep(1000);
