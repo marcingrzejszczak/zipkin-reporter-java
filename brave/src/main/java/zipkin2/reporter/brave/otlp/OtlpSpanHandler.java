@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 The OpenZipkin Authors
+ * Copyright 2016-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 package zipkin2.reporter.brave.otlp;
 
 import java.io.Closeable;
+import java.io.IOException;
 
 import brave.Tag;
 import brave.Tags;
@@ -72,6 +73,14 @@ public class OtlpSpanHandler extends SpanHandler implements Closeable {
    * @since 2.16
    */
   @Override public void close() {
+    if (this.spanReporter instanceof Closeable) {
+      try {
+        ((Closeable) this.spanReporter).close();
+      }
+      catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   public static abstract class Builder {

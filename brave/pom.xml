@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!--
 
-    Copyright 2016-2020 The OpenZipkin Authors
+    Copyright 2016-2023 The OpenZipkin Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -45,6 +45,10 @@
     <otlp-proto.version>1.0.0</otlp-proto.version>
     <protobuf.version>3.${protoc.version}</protobuf.version>
     <jsonpath.version>2.8.0</jsonpath.version>
+    <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
+    <protoc-gen-grpc-java.version>1.57.2</protoc-gen-grpc-java.version>
+    <grpc.version>1.57.2</grpc.version>
+    <javax.annotation-api.version>1.3.2</javax.annotation-api.version>
   </properties>
 
   <dependencies>
@@ -85,11 +89,31 @@
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
       <version>${protobuf.version}</version>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java-util</artifactId>
       <version>${protobuf.version}</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-protobuf</artifactId>
+      <version>${grpc.version}</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-stub</artifactId>
+      <version>${grpc.version}</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>javax.annotation</groupId>
+      <artifactId>javax.annotation-api</artifactId>
+      <version>${javax.annotation-api.version}</version>
+      <scope>compile</scope>
     </dependency>
     <!-- Until OTLP fixes their stuff with proto -->
     <dependency>
@@ -98,18 +122,69 @@
       <version>${jsonpath.version}</version>
     </dependency>
     <dependency>
-      <groupId>io.zipkin.reporter2</groupId>
-      <artifactId>zipkin-sender-urlconnection</artifactId>
-      <version>${project.version}</version>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-netty-shaded</artifactId>
+      <version>${grpc.version}</version>
       <scope>test</scope>
     </dependency>
-
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <version>${awaitility.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
+    <extensions>
+      <extension>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+        <version>${os-maven-plugin.version}</version>
+      </extension>
+    </extensions>
     <plugins>
       <!-- TODO: Add checks so files are not re-downloaded and unzipped -->
       <!-- TODO: Add checksum check -->
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>${maven-dependency-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>copy</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>copy</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>io.grpc</groupId>
+                  <artifactId>protoc-gen-grpc-java</artifactId>
+                  <version>${protoc-gen-grpc-java.version}</version>
+                  <type>exe</type>
+                  <classifier>${os.detected.classifier}</classifier>
+                </artifactItem>
+              </artifactItems>
+              <outputDirectory>${project.build.directory}/grpc-java-plugin/</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-antrun-plugin</artifactId>
@@ -128,13 +203,18 @@
                 <get
                   src="https://github.com/protocolbuffers/protobuf/releases/download/v${protoc.version}/protoc-${protoc.version}-${protoc.architecture}.zip"
                   dest="${project.build.directory}/protoc/"/>
-                <chmod perm="777">
-                  <fileset dir="${project.build.directory}/protoc/"/>
-                </chmod>
                 <echo message="Unzipping file"/>
                 <unzip
                   src="${project.build.directory}/protoc/protoc-${protoc.version}-${protoc.architecture}.zip"
                   dest="${project.build.directory}/protoc/"/>
+                <echo message="Making protoc related files executable"/>
+                <chmod perm="777">
+                  <fileset dir="${project.build.directory}/protoc/"/>
+                </chmod>
+                <echo message="Making grpc related files executable"/>
+                <chmod perm="777">
+                  <fileset dir="${project.build.directory}/grpc-java-plugin/"/>
+                </chmod>
               </target>
             </configuration>
           </execution>
@@ -213,7 +293,12 @@
               <executable>${project.build.directory}/protoc/bin/protoc</executable>
               <arguments>
                 <argument>
+                  --plugin=protoc-gen-grpc-java=${project.build.directory}/grpc-java-plugin/protoc-gen-grpc-java-${protoc-gen-grpc-java.version}-${os.detected.classifier}.exe
+                </argument>
+                <argument>
                   -I=${project.build.directory}/otlp/opentelemetry-proto-${otlp-proto.version}/
+                </argument>
+                <argument>--grpc-java_out=${project.build.directory}/generated-sources/java
                 </argument>
                 <argument>--java_out=${project.build.directory}/generated-sources/java
                 </argument>
@@ -248,6 +333,12 @@
           </execution>
         </executions>
       </plugin>
+
+      <!--<activation>
+        <file>
+          <missing>${basedir}/target/otlp/opentelemetry-proto-${otlp-proto.version}/gen/java/io/</missing>
+        </file>
+      </activation>-->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>

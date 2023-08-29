@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 The OpenZipkin Authors
+ * Copyright 2016-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -53,11 +53,11 @@ final class OtlpConvertingSpanReporter implements Reporter<MutableSpan> {
     Builder resourceSpansBuilder = ResourceSpans.newBuilder();
     ScopeSpans.Builder scopeSpanBuilder = ScopeSpans.newBuilder();
     Span.Builder spanBuilder = Span.newBuilder()
-        .setTraceId(ByteString.copyFrom(span.traceId().getBytes()))
-      .setSpanId(ByteString.copyFrom(span.id().getBytes()))
+        .setTraceId(ByteString.fromHex(span.traceId()))
+      .setSpanId(ByteString.fromHex(span.id()))
       .setName(span.name());
     if (span.parentId() != null) {
-        spanBuilder.setParentSpanId(ByteString.copyFrom(span.parentId().getBytes()));
+        spanBuilder.setParentSpanId(ByteString.fromHex(span.parentId()));
     }
     long start = span.startTimestamp();
     long finish = span.finishTimestamp();

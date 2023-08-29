@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 The OpenZipkin Authors
+ * Copyright 2016-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -186,12 +186,6 @@ public final class URLConnectionSender extends Sender {
   @Override public Call<Void> sendSpans(List<byte[]> encodedSpans) {
     if (closeCalled) throw new ClosedSenderException();
     return new HttpPostCall(encoder.encode(encodedSpans));
-  }
-
-  @Override
-  public Call<Void> sendSpans(byte[] encodedSpans) {
-    if (closeCalled) throw new ClosedSenderException();
-    return new HttpPostCall(encodedSpans);
   }
 
   /** Sends an empty json message to the configured endpoint. */
